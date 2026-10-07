@@ -1,0 +1,686 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RHACS Asset Explorer</title>
+<style>
+:root{
+  --bg:#0f1218;--panel:#161b24;--panel2:#1c2330;--line:#29323f;--text:#e3e8ef;--muted:#8b97a8;
+  --accent:#4fa3ff;--crit:#ff4d5e;--imp:#ff9a3c;--mod:#f2c94c;--low:#5cc8a1;--unk:#7d8796;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: light){:root{
+  --bg:#f4f6f9;--panel:#fff;--panel2:#f0f3f7;--line:#dde3ea;--text:#18202c;--muted:#5f6b7c;--accent:#1f6fd1;
+}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+a{color:var(--accent);text-decoration:none;cursor:pointer} a:hover{text-decoration:underline}
+header{display:flex;gap:16px;align-items:center;padding:10px 20px;background:var(--panel);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5;flex-wrap:wrap}
+header .brand{font-weight:700;letter-spacing:.2px;white-space:nowrap}
+header .brand span{color:var(--accent)}
+nav{display:flex;gap:4px;flex-wrap:wrap}
+nav a{padding:6px 10px;border-radius:6px;color:var(--muted)} nav a.on,nav a:hover{background:var(--panel2);color:var(--text);text-decoration:none}
+#gsearch{flex:1;min-width:220px;max-width:520px;padding:8px 12px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--text)}
+.fresh{color:var(--muted);font-size:12px;margin-left:auto;white-space:nowrap}
+main{padding:20px;max-width:1500px;margin:0 auto}
+h1{font-size:20px;margin:0 0 4px} h2{font-size:15px;margin:22px 0 10px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px}
+.sub{color:var(--muted);margin-bottom:16px}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px}
+.kpi .n{font-size:26px;font-weight:700} .kpi .l{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.5px}
+.kpi.crit .n{color:var(--crit)} .kpi.imp .n{color:var(--imp)}
+table{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+th,td{padding:7px 10px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+th{background:var(--panel2);font-size:12px;color:var(--muted);font-weight:600;cursor:pointer;user-select:none;white-space:nowrap}
+tr:last-child td{border-bottom:none} tbody tr:hover{background:var(--panel2)}
+.tbl-wrap{overflow-x:auto}
+.mono{font-family:var(--mono);font-size:12.5px}
+.sev{display:inline-block;padding:1px 8px;border-radius:10px;font-size:11.5px;font-weight:700;color:#111}
+.sev.Critical{background:var(--crit);color:#fff}.sev.Important{background:var(--imp)}.sev.Moderate{background:var(--mod)}.sev.Low{background:var(--low)}.sev.Unknown{background:var(--unk);color:#fff}
+.pill{display:inline-block;padding:1px 7px;border-radius:10px;font-size:11.5px;border:1px solid var(--line);color:var(--muted);margin:1px 2px 1px 0}
+.pill.warn{border-color:var(--imp);color:var(--imp)} .pill.bad{border-color:var(--crit);color:var(--crit)} .pill.ok{border-color:var(--low);color:var(--low)}
+.counts span{display:inline-block;min-width:22px;text-align:center;border-radius:4px;padding:0 4px;margin-right:2px;font-size:12px;font-weight:600}
+.counts .c{background:rgba(255,77,94,.18);color:var(--crit)}.counts .i{background:rgba(255,154,60,.18);color:var(--imp)}.counts .m{background:rgba(242,201,76,.18);color:var(--mod)}.counts .l{background:rgba(92,200,161,.15);color:var(--low)}
+.counts .z{opacity:.35}
+textarea,input[type=text],select{background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font:inherit}
+textarea{width:100%;min-height:80px;font-family:var(--mono)}
+button{background:var(--accent);color:#fff;border:0;border-radius:8px;padding:8px 16px;font-weight:600;cursor:pointer}
+button.ghost{background:transparent;color:var(--accent);border:1px solid var(--accent)}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.cvehead{display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
+.cvehead .id{font-size:20px;font-weight:700;font-family:var(--mono)}
+.blast{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));margin:12px 0}
+.blast .card{padding:10px;text-align:center} .blast .n{font-size:22px;font-weight:700}
+.chain{font-size:13px} .chain .sep{color:var(--muted);margin:0 6px}
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin:14px 0 10px}
+.tabs a{padding:8px 14px;color:var(--muted);border-bottom:2px solid transparent}
+.tabs a.on{color:var(--text);border-color:var(--accent);text-decoration:none}
+.muted{color:var(--muted)} .empty{padding:30px;text-align:center;color:var(--muted)}
+.kv{display:grid;grid-template-columns:max-content 1fr;gap:4px 16px} .kv div:nth-child(odd){color:var(--muted)}
+.section{margin-top:22px}
+.bar{height:8px;border-radius:4px;background:var(--panel2);overflow:hidden;display:flex}
+.bar i{display:block;height:100%}
+.loading{color:var(--muted);padding:20px}
+.ok{color:var(--low)} .bad{color:var(--crit)}
+td .mono.ok,td .pill{white-space:nowrap} td:first-child{white-space:nowrap}
+/* ---- SBOM map ---- */
+.maplayout{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:14px;margin-top:14px;align-items:start}
+@media (max-width:1100px){.maplayout{grid-template-columns:1fr}}
+.mapwrap{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:auto;max-height:78vh}
+.mapwrap svg{display:block}
+.g-node{cursor:pointer}
+.g-node rect.box{fill:var(--panel2);stroke:var(--line);stroke-width:1}
+.g-node.sel rect.box{stroke:var(--accent);stroke-width:2.5}
+.g-node text{fill:var(--text);font-size:12px;pointer-events:none}
+.g-node text.sub{fill:var(--muted);font-size:10.5px}
+.g-edge{fill:none;stroke:var(--muted);stroke-opacity:.28;stroke-width:1.3}
+.g-edge.hl{stroke:var(--accent);stroke-opacity:.95;stroke-width:2}
+svg.dim .g-node:not(.hl){opacity:.22} svg.dim .g-edge:not(.hl){stroke-opacity:.06}
+.g-col{fill:var(--muted);font-size:11px;font-weight:600;letter-spacing:.6px;text-transform:uppercase}
+.sev-Critical{stroke:var(--crit)!important;stroke-width:2!important}.sev-Important{stroke:var(--imp)!important;stroke-width:2!important}
+.sev-Moderate{stroke:var(--mod)!important}.sev-Low{stroke:var(--low)!important}
+.panel{position:sticky;top:70px;max-height:78vh;overflow:auto}
+.panel h3{margin:0 0 4px;font-size:16px;word-break:break-all}
+.panel .kv{font-size:13px}
+.legend{display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:8px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+.purl{font-family:var(--mono);font-size:11.5px;word-break:break-all}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.btnrow a button{padding:6px 12px;font-size:12.5px}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">RHACS <span>Asset Explorer</span></div>
+  <nav id="nav">
+    <a href="#/">Overview</a><a href="#/impact">CVE Impact</a><a href="#/sbom">SBOM Map</a><a href="#/package">Package Hunt</a>
+    <a href="#/cves">CVEs</a><a href="#/clusters">Clusters</a><a href="#/images">Images</a><a href="#/nodes">Nodes</a>
+  </nav>
+  <input id="gsearch" placeholder="Search CVE, image, deployment, namespace, node, package…" autocomplete="off">
+  <div class="fresh" id="fresh"></div>
+</header>
+<main id="app"><div class="loading">Loading…</div></main>
+
+<script>
+// ------------------------------------------------------------------ helpers
+const $app = document.getElementById('app');
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const enc = encodeURIComponent;
+const api = async p => { const r = await fetch(p); if(!r.ok) throw new Error(r.status+' '+await r.text()); return r.json(); };
+const sev = s => `<span class="sev ${esc(s||'Unknown')}">${esc(s||'Unknown')}</span>`;
+const num = v => v==null ? '<span class="muted">–</span>' : esc(v);
+const pct = v => v==null ? '<span class="muted">–</span>' : (v*100).toFixed(1)+'%';
+const ago = t => { if(!t) return '–'; const d=(Date.now()-new Date(t))/36e5; return d<1?Math.round(d*60)+'m ago':d<48?Math.round(d)+'h ago':Math.round(d/24)+'d ago'; };
+const counts = c => c ? `<span class="counts"><span class="c ${c.Critical?'':'z'}">${c.Critical}</span><span class="i ${c.Important?'':'z'}">${c.Important}</span><span class="m ${c.Moderate?'':'z'}">${c.Moderate}</span><span class="l ${c.Low?'':'z'}">${c.Low}</span></span>` : '';
+const L = {
+  cve: id => `<a class="mono" href="#/impact?ids=${enc(id)}">${esc(id)}</a>`,
+  dep: (id,n) => id ? `<a href="#/deployment/${enc(id)}">${esc(n)}</a>` : esc(n),
+  img: (id,n) => id ? `<a class="mono" href="#/image/${enc(id)}">${esc(n)}</a>` : `<span class="mono">${esc(n)}</span>`,
+  ns: (id,n) => id ? `<a href="#/namespace/${enc(id)}">${esc(n)}</a>` : esc(n),
+  cl: (id,n) => id ? `<a href="#/cluster/${enc(id)}">${esc(n)}</a>` : esc(n),
+  node: (id,n) => id ? `<a href="#/node/${enc(id)}">${esc(n)}</a>` : esc(n),
+  pkg: (n,v) => `<a href="#/sbom?name=${enc(n)}${v?'&version='+enc(v):''}&exact=1" title="Show on SBOM map">${esc(n)}</a>`,
+};
+const expo = e => !e||e==='UNSET' ? '<span class="muted">none</span>' :
+  `<span class="pill ${e==='EXTERNAL'||e==='ROUTE'?'bad':e==='NODE'||e==='HOST'?'warn':''}">${esc(e)}</span>`;
+const flags = d => (d.privileged?'<span class="pill bad">privileged</span>':'')+(d.hostNetwork?'<span class="pill warn">hostNetwork</span>':'')+(d.inactive?'<span class="pill">inactive</span>':'');
+
+// sortable table: cols = [{h, f(row)->html, s(row)->sortKey}]
+let _tid = 0;
+function table(rows, cols, opts={}){
+  if(!rows || !rows.length) return `<div class="card empty">${esc(opts.empty||'Nothing found')}</div>`;
+  const id = 't'+(++_tid), max = opts.max || 500;
+  window['_t_'+id] = {rows, cols, max, dir:{}};
+  return `<div class="tbl-wrap" id="${id}">${renderTable(id)}</div>`;
+}
+function renderTable(id){
+  const t = window['_t_'+id];
+  const head = t.cols.map((c,i)=>`<th onclick="sortT('${id}',${i})">${esc(c.h)}${t.si===i?(t.dir[i]?' ▲':' ▼'):''}</th>`).join('');
+  const body = t.rows.slice(0,t.max).map(r=>'<tr>'+t.cols.map(c=>`<td>${c.f(r)}</td>`).join('')+'</tr>').join('');
+  const more = t.rows.length>t.max ? `<div class="muted" style="padding:6px 2px">Showing ${t.max} of ${t.rows.length} rows — export CSV for all.</div>`:'';
+  return `<table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>${more}`;
+}
+function sortT(id,i){
+  const t = window['_t_'+id], c=t.cols[i]; if(!c.s) return;
+  t.dir[i] = !t.dir[i]; t.si=i; const d=t.dir[i]?1:-1;
+  t.rows.sort((a,b)=>{const x=c.s(a),y=c.s(b); return (x>y?1:x<y?-1:0)*d;});
+  document.getElementById(id).innerHTML = renderTable(id);
+}
+const SR = {Critical:4,Important:3,Moderate:2,Low:1,Unknown:0};
+
+// ------------------------------------------------------------------ routing
+const routes = [];
+const route = (re, fn) => routes.push([re, fn]);
+async function router(){
+  const h = location.hash.slice(1) || '/';
+  const [path, qs] = h.split('?'); const q = new URLSearchParams(qs||'');
+  document.querySelectorAll('#nav a').forEach(a=>{const p=a.getAttribute('href').slice(1);a.classList.toggle('on', p==='/'?path==='/':path.startsWith(p));});
+  for(const [re, fn] of routes){ const m = path.match(re); if(m){
+    $app.innerHTML = '<div class="loading">Loading…</div>';
+    try { await fn(m.slice(1).map(decodeURIComponent), q); }
+    catch(e){ $app.innerHTML = `<div class="card bad">Error: ${esc(e.message)}</div>`; }
+    window.scrollTo(0,0); return; } }
+  $app.innerHTML = '<div class="empty">Not found</div>';
+}
+window.addEventListener('hashchange', router);
+
+// ------------------------------------------------------------------ overview
+route(/^\/$/, async () => {
+  const s = await api('/api/summary'); const c = s.counts;
+  document.getElementById('fresh').innerHTML = `Data collected ${esc(ago(s.meta.collectedAt))} · ${esc((s.meta.collectedAt||'').replace('T',' ').slice(0,16))} UTC`;
+  const sevTotal = ['Critical','Important','Moderate','Low'].reduce((a,k)=>a+(s.severity[k]||0),0)||1;
+  $app.innerHTML = `
+  <h1>Overview</h1><div class="sub">Source: ${esc(s.meta.central||'')}${s.meta.scopeQuery?' · scope '+esc(s.meta.scopeQuery):''}</div>
+  <div class="grid">
+    ${[['Clusters',c.clusters,'#/clusters'],['Nodes',c.nodes,'#/nodes'],['Namespaces',c.namespaces,'#/clusters'],['Deployments',c.deployments,'#/clusters'],['Images',c.images,'#/images'],['Unique CVEs',c.cves,'#/cves']]
+      .map(([l,n,h])=>`<a class="card kpi" href="${h}" style="text-decoration:none;color:inherit"><div class="n">${n}</div><div class="l">${l}</div></a>`).join('')}
+    <a class="card kpi crit" href="#/cves?severity=Critical" style="text-decoration:none;color:inherit"><div class="n">${s.severity.Critical||0}</div><div class="l">Critical CVEs</div></a>
+    <a class="card kpi imp" href="#/cves?severity=Important" style="text-decoration:none;color:inherit"><div class="n">${s.severity.Important||0}</div><div class="l">Important CVEs</div></a>
+  </div>
+  <div class="card" style="margin-top:12px"><div class="bar">
+    ${[['Critical','--crit'],['Important','--imp'],['Moderate','--mod'],['Low','--low']].map(([k,v])=>`<i title="${k}: ${s.severity[k]||0}" style="width:${100*(s.severity[k]||0)/sevTotal}%;background:var(${v})"></i>`).join('')}
+  </div></div>
+
+  <h2>Quick CVE impact check</h2>
+  <div class="card"><div class="row"><input type="text" id="qcve" placeholder="CVE-2024-3094, CVE-2021-44228 …" style="flex:1">
+  <button onclick="location.hash='#/impact?ids='+encodeURIComponent(document.getElementById('qcve').value)">Analyse impact</button></div></div>
+
+  <h2>Externally exposed workloads with Critical CVEs</h2>
+  ${depTable(s.exposedCritical, 'No externally exposed workloads with Critical CVEs 🎉')}
+  <h2>Top CVEs by blast radius</h2>
+  ${table(s.topCves,[
+    {h:'CVE',f:r=>L.cve(r.id),s:r=>r.id},{h:'Severity',f:r=>sev(r.severity),s:r=>SR[r.severity]},
+    {h:'CVSS',f:r=>num(r.cvss),s:r=>r.cvss||0},{h:'EPSS',f:r=>pct(r.epssProbability),s:r=>r.epssProbability||0},
+    {h:'Deployments',f:r=>r.deploymentCount,s:r=>r.deploymentCount},{h:'Images',f:r=>r.imageCount,s:r=>r.imageCount},
+    {h:'Nodes',f:r=>r.nodeCount,s:r=>r.nodeCount},{h:'Fix',f:r=>r.fixable?'<span class="ok">available</span>':'<span class="muted">none</span>',s:r=>+r.fixable},
+    {h:'Summary',f:r=>`<span class="muted">${esc((r.summary||'').slice(0,110))}</span>`}])}
+  <h2>Most vulnerable deployments</h2>
+  ${depTable(s.topDeployments)}
+  <h2>Clusters</h2>${clusterTable(s.clusters)}`;
+});
+
+function depTable(rows, empty){
+  return table(rows,[
+    {h:'Cluster',f:r=>L.cl(r.clusterId,r.clusterName),s:r=>r.clusterName},
+    {h:'Namespace',f:r=>L.ns(r.namespaceId,r.namespace),s:r=>r.namespace},
+    {h:'Deployment',f:r=>L.dep(r.id,r.name)+' <span class="muted">'+esc(r.type||'')+'</span>',s:r=>r.name},
+    {h:'C / I / M / L',f:r=>counts(r.sevCounts),s:r=>r.sevCounts.Critical*1e4+r.sevCounts.Important*100+r.sevCounts.Moderate},
+    {h:'Risk',f:r=>num(r.riskScore),s:r=>r.riskScore||0},{h:'Exposure',f:r=>expo(r.exposure),s:r=>r.exposure},
+    {h:'Flags',f:flags}], {empty});
+}
+function clusterTable(rows){
+  return table(rows,[{h:'Cluster',f:r=>L.cl(r.id,r.name),s:r=>r.name},{h:'Type',f:r=>esc(r.type)},
+    {h:'Version',f:r=>esc(r.openshiftVersion?'OCP '+r.openshiftVersion:r.k8sVersion||'')},{h:'Provider',f:r=>esc([r.provider,r.region].filter(Boolean).join(' / '))},
+    {h:'Health',f:r=>`<span class="pill ${r.health==='HEALTHY'?'ok':'warn'}">${esc(r.health||'?')}</span>`},
+    {h:'Nodes',f:r=>num(r.nodeCount),s:r=>r.nodeCount},{h:'Deployments',f:r=>num(r.deploymentCount),s:r=>r.deploymentCount}]);
+}
+
+// ------------------------------------------------------------------ CVE impact
+route(/^\/impact$/, async (_, q) => {
+  const ids = q.get('ids') || '';
+  $app.innerHTML = `<h1>CVE Impact Analysis</h1>
+   <div class="sub">Paste one or more CVE / advisory IDs (from a vendor bulletin, threat-intel feed or ticket). Every affected cluster, namespace, workload, image and node is traced.</div>
+   <div class="card"><textarea id="ids" placeholder="CVE-2024-3094&#10;CVE-2023-44487">${esc(ids.replace(/[,;]+/g,'\n'))}</textarea>
+   <div class="row" style="margin-top:8px"><button id="go">Analyse</button>
+   ${ids?`<a class="ghost" href="/api/impact.csv?ids=${enc(ids)}"><button class="ghost">Export CSV</button></a>`:''}</div></div>
+   <div id="res"></div>`;
+  document.getElementById('go').onclick = () => {
+    const v = document.getElementById('ids').value.match(/[A-Za-z]+-[\w:.-]+/g)||[];
+    location.hash = '#/impact?ids='+enc(v.join(','));
+  };
+  if(!ids) return;
+  const r = await api('/api/impact?ids='+enc(ids)); const out = [];
+  if(r.notFound.length) out.push(`<div class="card" style="margin-top:12px"><b class="ok">Not present in inventory:</b> <span class="mono">${r.notFound.map(esc).join(', ')}</span>
+     <div class="muted">RHACS has not detected these in any scanned image or node. If the CVE is very new, scanner data may lag — try <a href="#/package">Package Hunt</a> by component name/version.</div></div>`);
+  for(const x of r.results) out.push(renderImpact(x));
+  document.getElementById('res').innerHTML = out.join('');
+});
+
+function renderImpact(x){
+  const i = x.info, b = x.blast, uid = 'i'+(++_tid);
+  const tabs = [['Workloads ('+x.workloads.length+')','w'],['Images ('+x.images.length+')','i'],['Nodes ('+x.nodes.length+')','n']];
+  const html = `<div class="section card">
+   <div class="cvehead"><span class="id">${esc(x.id)}</span>${sev(i.severity)}
+     <span>CVSS <b>${num(i.cvss)}</b></span><span>EPSS <b>${pct(i.epssProbability)}</b>${i.epssPercentile!=null?' <span class="muted">(p'+Math.round(i.epssPercentile*100)+')</span>':''}</span>
+     <span>${i.fixable?'<span class="pill ok">fix available</span>':'<span class="pill warn">no fix yet</span>'}</span>
+     ${i.advisory?`<span class="pill">${esc(i.advisory)}</span>`:''}
+     ${i.link?`<a href="${esc(i.link)}" target="_blank" rel="noopener noreferrer">reference ↗</a>`:''}
+     <span class="muted">published ${esc((i.publishedOn||'').slice(0,10)||'–')}</span></div>
+   <div class="muted" style="margin-top:6px">${esc(i.summary)}</div>
+   <div class="blast">
+     ${[['Clusters',b.clusters],['Namespaces',b.namespaces],['Deployments',b.deployments],['Images',b.images],['Nodes',b.nodes],['Internet-exposed',b.exposed,'bad'],['Privileged',b.privileged,'bad']]
+       .map(([l,n,c])=>`<div class="card"><div class="n ${n&&c?c:''}">${n}</div><div class="muted">${l}</div></div>`).join('')}
+   </div>
+   <div class="tabs" id="${uid}">${tabs.map(([l,k],j)=>`<a class="${j?'':'on'}" onclick="tab('${uid}','${k}',this)">${l}</a>`).join('')}</div>
+   <div id="${uid}-w">${table(x.workloads,[
+      {h:'Cluster',f:r=>L.cl(r.clusterId,r.cluster),s:r=>r.cluster},
+      {h:'Namespace',f:r=>L.ns(r.namespaceId,r.namespace),s:r=>r.namespace},
+      {h:'Deployment',f:r=>L.dep(r.deploymentId,r.deployment),s:r=>r.deployment},
+      {h:'Exposure',f:r=>expo(r.exposure)+(r.privileged?'<span class="pill bad">privileged</span>':''),s:r=>r.exposure},
+      {h:'Risk',f:r=>num(r.riskScore),s:r=>r.riskScore||0},
+      {h:'Nodes',f:r=>r.nodes.map(n=>L.node(n.id,n.name)).join(', ')||'<span class="muted">–</span>'},
+      {h:'Image',f:r=>L.img(r.imageId,r.image),s:r=>r.image},
+      {h:'Package',f:r=>L.pkg(r.component)+' <span class="mono muted">'+esc(r.version)+'</span>',s:r=>r.component},
+      {h:'Fixed in',f:r=>r.fixedBy?`<span class="mono ok">${esc(r.fixedBy)}</span>`:'<span class="muted">–</span>',s:r=>r.fixedBy}],
+      {empty:'No deployed workload uses an affected image'})}</div>
+   <div id="${uid}-i" hidden>${table(x.images,[
+      {h:'Image',f:r=>L.img(r.id,r.fullName),s:r=>r.fullName},{h:'OS',f:r=>esc(r.os)},
+      {h:'Package',f:r=>L.pkg(r.component)+' <span class="mono muted">'+esc(r.version)+'</span>'},
+      {h:'Type',f:r=>esc(r.source||'')},{h:'Location',f:r=>`<span class="mono muted">${esc(r.location||'')}</span>`},
+      {h:'Fixed in',f:r=>r.fixedBy?`<span class="mono ok">${esc(r.fixedBy)}</span>`:'<span class="muted">–</span>'},
+      {h:'Deployments',f:r=>r.deploymentCount,s:r=>r.deploymentCount}])}</div>
+   <div id="${uid}-n" hidden>${table(x.nodes,[
+      {h:'Cluster',f:r=>L.cl(r.clusterId,r.clusterName),s:r=>r.clusterName},{h:'Node',f:r=>L.node(r.id,r.name),s:r=>r.name},
+      {h:'IP',f:r=>`<span class="mono">${esc((r.internalIps||[]).join(', '))}</span>`},{h:'OS',f:r=>esc(r.os)},
+      {h:'Package',f:r=>esc(r.component)+' <span class="mono muted">'+esc(r.version)+'</span>'},
+      {h:'Fixed in',f:r=>r.fixedBy?`<span class="mono ok">${esc(r.fixedBy)}</span>`:'<span class="muted">–</span>'},
+      {h:'Workloads on node',f:r=>r.deploymentCount,s:r=>r.deploymentCount}],{empty:'No node OS packages affected'})}</div>
+  </div>`;
+  return html;
+}
+function tab(uid,k,el){
+  ['w','i','n'].forEach(x=>document.getElementById(uid+'-'+x).hidden = x!==k);
+  el.parentNode.querySelectorAll('a').forEach(a=>a.classList.toggle('on',a===el));
+}
+
+// ------------------------------------------------------------------ SBOM map
+const TYPE_COLOR = {package:'#a78bfa',image:'#4fa3ff',host:'#22c3c3',deployment:'#5cc8a1',namespace:'#f2c94c',cluster:'#ff9a3c'};
+const COLS = ['Package versions','Images / Hosts','Deployments','Namespaces','Clusters'];
+let MAP = null;   // current graph state
+
+route(/^\/sbom$/, async (_, q) => {
+  const name = q.get('name')||'', ver = q.get('version')||'', exact = q.get('exact')==='1', vuln = q.get('vuln')==='1';
+  $app.innerHTML = `<h1>SBOM Map</h1>
+   <div class="sub">Search a package to see every version in the estate and exactly which images, hosts, workloads, namespaces and clusters use it. Click any box for details; hover to trace its path.</div>
+   <div class="card row">
+     <input type="text" id="mn" list="mlist" placeholder="package name (e.g. openssl, log4j-core, xz)" value="${esc(name)}" style="flex:2;min-width:220px" autocomplete="off">
+     <datalist id="mlist"></datalist>
+     <input type="text" id="mv" placeholder="version prefix (optional)" value="${esc(ver)}" style="flex:1;min-width:140px">
+     <label class="muted"><input type="checkbox" id="mx" ${exact?'checked':''}> exact name</label>
+     <label class="muted"><input type="checkbox" id="mvu" ${vuln?'checked':''}> vulnerable versions only</label>
+     <button id="mgo">Map</button></div>
+   <div id="mres">${name?'<div class="loading">Building map…</div>':''}</div>`;
+  const inp = document.getElementById('mn');
+  let tmr; inp.addEventListener('input', () => { clearTimeout(tmr); tmr = setTimeout(async () => {
+    if(inp.value.trim().length<2) return;
+    const list = await api('/api/packages?limit=30&q='+enc(inp.value.trim()));
+    document.getElementById('mlist').innerHTML = list.map(p=>`<option value="${esc(p.name)}">${p.versions} ver · ${p.images} img · ${p.nodes} hosts · ${p.cves} CVEs</option>`).join('');
+  }, 200); });
+  const go = () => location.hash = '#/sbom?'+new URLSearchParams({name:inp.value.trim(),version:document.getElementById('mv').value.trim(),
+     exact:document.getElementById('mx').checked?'1':'',vuln:document.getElementById('mvu').checked?'1':''});
+  document.getElementById('mgo').onclick = go;
+  ['mn','mv'].forEach(i=>document.getElementById(i).onkeydown = e => e.key==='Enter' && go());
+
+  if(!name){
+    const top = await api('/api/packages?limit=25');
+    document.getElementById('mres').innerHTML = `<h2>Most widely used packages</h2>`+pkgListTable(top);
+    return;
+  }
+  if(name.length<2) return;
+  const g = await api('/api/package-graph?'+new URLSearchParams({name,version:ver,exact:exact?'1':'',vuln:vuln?'1':''}));
+  if(!g.nodes.length){
+    const sugg = await api('/api/packages?limit=15&q='+enc(name.slice(0,4)));
+    document.getElementById('mres').innerHTML = `<div class="card empty" style="margin-top:12px">No package matching “${esc(name)}”${ver?' version '+esc(ver)+'*':''} found in any image or host SBOM.</div>`+
+      (sugg.length?`<h2>Similar packages</h2>`+pkgListTable(sugg):'');
+    return;
+  }
+  const c = g.counts;
+  document.getElementById('mres').innerHTML = `
+    <div class="blast">
+      ${[['Package versions',c.package||0],['Images',c.image||0],['Hosts',c.host||0],['Deployments',c.deployment||0],['Namespaces',c.namespace||0],['Clusters',c.cluster||0]]
+        .map(([l,n])=>`<div class="card"><div class="n">${n}</div><div class="muted">${l}</div></div>`).join('')}
+    </div>
+    ${g.truncated?'<div class="card warn" style="margin-bottom:10px">Graph truncated at 600 nodes — narrow with a version prefix or exact name.</div>':''}
+    <div class="maplayout">
+      <div><div class="mapwrap" id="mapwrap"></div>
+        <div class="legend">${Object.entries(TYPE_COLOR).map(([k,v])=>`<span><i style="background:${v}"></i>${k}</span>`).join('')}
+          <span>· border = worst CVE severity</span><span>· <a onclick="mapReset()">reset highlight</a></span></div></div>
+      <div class="card panel" id="mpanel"></div>
+    </div>
+    <h2>Package details (${g.packages.length} version${g.packages.length>1?'s':''})</h2>
+    ${table(g.packages,[
+      {h:'Package',f:p=>`<a onclick="mapSelect('p:${esc(p.name)}@${esc(p.version)}')">${esc(p.name)}</a>`,s:p=>p.name},
+      {h:'Version',f:p=>`<span class="mono">${esc(p.version)}</span>`,s:p=>p.version},
+      {h:'Worst',f:p=>p.worst==='None'?'<span class="muted">no CVEs</span>':sev(p.worst),s:p=>SR[p.worst]??-1},
+      {h:'CVEs',f:p=>p.cves.length,s:p=>p.cves.length},
+      {h:'Type',f:p=>esc(p.types.join(', '))},
+      {h:'purl',f:p=>`<span class="purl">${esc(p.purls[0]||'')}</span>${p.purls.length>1?` <span class="muted">+${p.purls.length-1}</span>`:''}`},
+      {h:'License',f:p=>esc(p.licenses.join(', ')||'–')},{h:'Supplier',f:p=>esc(p.suppliers.join(', ')||'–')},
+      {h:'Images',f:p=>p.imageCount,s:p=>p.imageCount},{h:'Hosts',f:p=>p.nodeCount,s:p=>p.nodeCount}])}`;
+  drawMap(g);
+  mapSummary(g);
+  // auto-select when only one package version
+  const pk = g.nodes.filter(n=>n.type==='package'); if(pk.length===1) mapSelect(pk[0].id);
+});
+
+function pkgListTable(rows){ return table(rows,[
+  {h:'Package',f:p=>L.pkg(p.name),s:p=>p.name},{h:'Type',f:p=>esc(p.types.join(', '))},
+  {h:'Versions',f:p=>p.versions,s:p=>p.versions},{h:'Images',f:p=>p.images,s:p=>p.images},
+  {h:'Deployments',f:p=>p.deployments,s:p=>p.deployments},{h:'Hosts',f:p=>p.nodes,s:p=>p.nodes},
+  {h:'CVEs',f:p=>p.cves,s:p=>p.cves},{h:'Worst',f:p=>p.worst==='None'?'<span class="muted">–</span>':sev(p.worst),s:p=>SR[p.worst]??-1}]); }
+
+function drawMap(g){
+  const wrap = document.getElementById('mapwrap');
+  const W = Math.max(wrap.clientWidth, 1000), colW = W/5, boxW = colW-34, boxH = 34, gap = 8, top = 34;
+  const byId = {}, out = {}, inn = {};
+  g.nodes.forEach(n=>{byId[n.id]=n; out[n.id]=[]; inn[n.id]=[];});
+  g.edges.forEach(e=>{out[e.s].push(e.t); inn[e.t].push(e.s);});
+  const cols = [0,1,2,3,4].map(c=>g.nodes.filter(n=>n.col===c));
+  // order: col0 by name; later cols by barycenter of parents (2 sweeps) to cut crossings
+  cols[0].sort((a,b)=>a.label.localeCompare(b.label,undefined,{numeric:true}));
+  const pos = {}; const place = c => cols[c].forEach((n,i)=>pos[n.id]=i);
+  place(0);
+  for(let pass=0; pass<2; pass++){
+    for(let c=1;c<5;c++){
+      cols[c].forEach(n=>{const p=inn[n.id].filter(x=>pos[x]!=null); n._b = p.length? p.reduce((a,x)=>a+pos[x],0)/p.length : 1e6;});
+      cols[c].sort((a,b)=>a._b-b._b || a.label.localeCompare(b.label)); place(c);
+    }
+    for(let c=3;c>=1;c--){
+      cols[c].forEach(n=>{const p=out[n.id].filter(x=>pos[x]!=null); const b = p.length? p.reduce((a,x)=>a+pos[x],0)/p.length : n._b; n._b = (n._b+b)/2;});
+      cols[c].sort((a,b)=>a._b-b._b); place(c);
+    }
+  }
+  // y placement: the fullest column is stacked from the top; every other column is placed
+  // outward from it, each node aligned to the average y of its already-placed neighbours,
+  // then pushed down just enough to avoid overlaps.
+  const step = boxH+gap, sizes = cols.map(c=>c.length);
+  const anchor = sizes.indexOf(Math.max(...sizes));
+  cols.forEach((col,c)=>col.forEach(n=>n.x = c*colW+17));
+  cols[anchor].forEach((n,i)=>n.y = top + i*step);
+  const placeCol = (c, from) => {
+    const col = cols[c];
+    col.forEach(n=>{ const nb = (from<c?MAP_IN(n):MAP_OUT(n)).map(x=>byId[x]).filter(x=>x&&x.col===from&&x.y!=null);
+      n._y = nb.length ? nb.reduce((a,x)=>a+x.y,0)/nb.length : 1e9; });
+    col.sort((a,b)=>a._y-b._y);
+    let prev = top - step;
+    col.forEach(n=>{ n.y = Math.max(n._y===1e9? prev+step : n._y, prev+step); prev = n.y; });
+  };
+  const MAP_IN = n => inn[n.id], MAP_OUT = n => out[n.id];
+  for(let c=anchor+1;c<5;c++) placeCol(c, c-1);
+  for(let c=anchor-1;c>=0;c--) placeCol(c, c+1);
+  const H = Math.max(...g.nodes.map(n=>n.y)) + boxH + 14;
+  const maxChars = Math.floor((boxW-22)/6.6);
+  const cut = s => (s=String(s||'')).length>maxChars ? s.slice(0,maxChars-1)+'…' : s;
+  let svg = `<svg id="msvg" width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">`;
+  COLS.forEach((t,c)=>svg+=`<text class="g-col" x="${c*colW+17}" y="20">${esc(t)} (${cols[c].length})</text>`);
+  g.edges.forEach((e,i)=>{ const a=byId[e.s], b=byId[e.t]; const x1=a.x+boxW, y1=a.y+boxH/2, x2=b.x, y2=b.y+boxH/2, mx=(x1+x2)/2;
+    svg += `<path class="g-edge" data-s="${esc(e.s)}" data-t="${esc(e.t)}" d="M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}"/>`; });
+  g.nodes.forEach(n=>{
+    svg += `<g class="g-node" data-id="${esc(n.id)}" transform="translate(${n.x},${n.y})">
+      <title>${esc(n.type)}: ${esc(n.sub||n.label)}</title>
+      <rect class="box ${n.sev&&n.sev!=='None'?'sev-'+esc(n.sev):''}" width="${boxW}" height="${boxH}" rx="6"/>
+      <rect width="5" height="${boxH}" rx="2" fill="${TYPE_COLOR[n.type]}"/>
+      <text x="12" y="14">${esc(cut(n.label))}</text><text class="sub" x="12" y="27">${esc(cut(n.sub))}</text></g>`;
+  });
+  svg += '</svg>';
+  wrap.innerHTML = svg;
+  MAP = {g, byId, out, inn, sel:null};
+  const s = document.getElementById('msvg');
+  s.querySelectorAll('.g-node').forEach(el=>{
+    el.addEventListener('mouseenter', ()=>{ if(!MAP.sel) highlight(el.dataset.id); });
+    el.addEventListener('mouseleave', ()=>{ if(!MAP.sel) clearHl(); });
+    el.addEventListener('click', ()=>mapSelect(el.dataset.id));
+  });
+}
+function lineage(id){
+  const seen = new Set([id]), walk = (start, adj) => { const st=[start]; while(st.length){ const x=st.pop(); for(const y of adj[x]||[]) if(!seen.has(y)){seen.add(y); st.push(y);} } };
+  walk(id, MAP.out); walk(id, MAP.inn);
+  // for package/image selections, also show downstream of the upstream nodes? keep strict lineage for clarity
+  return seen;
+}
+function highlight(id){
+  const s = document.getElementById('msvg'); if(!s) return; const set = lineage(id);
+  s.classList.add('dim');
+  s.querySelectorAll('.g-node').forEach(el=>el.classList.toggle('hl', set.has(el.dataset.id)));
+  s.querySelectorAll('.g-edge').forEach(el=>el.classList.toggle('hl', set.has(el.dataset.s) && set.has(el.dataset.t)));
+}
+function clearHl(){ const s=document.getElementById('msvg'); if(!s) return; s.classList.remove('dim');
+  s.querySelectorAll('.hl').forEach(el=>el.classList.remove('hl')); s.querySelectorAll('.sel').forEach(el=>el.classList.remove('sel')); }
+function mapReset(){ if(!MAP) return; MAP.sel=null; clearHl(); mapSummary(MAP.g); }
+function mapSelect(id){
+  if(!MAP || !MAP.byId[id]) return; MAP.sel = id; clearHl(); highlight(id);
+  const el = document.querySelector(`#msvg .g-node[data-id="${CSS.escape(id)}"]`);
+  if(el){ el.classList.add('sel'); el.scrollIntoView({block:'nearest',inline:'nearest',behavior:'smooth'}); }
+  renderPanel(MAP.byId[id]);
+}
+function mapSummary(g){
+  const p = document.getElementById('mpanel'); if(!p) return;
+  const vers = g.packages, vulnV = vers.filter(v=>v.cves.length);
+  p.innerHTML = `<h3>${esc(g.query.name)}${g.query.version?' '+esc(g.query.version)+'*':''}</h3>
+    <div class="muted">${vers.length} version(s), ${vulnV.length} with known CVEs</div>
+    <div class="section">${vers.slice(0,30).map(v=>`<div style="margin:4px 0"><a onclick="mapSelect('p:${esc(v.name)}@${esc(v.version)}')">${esc(v.name)} <span class="mono">${esc(v.version)}</span></a>
+      ${v.worst==='None'?'<span class="pill ok">clean</span>':sev(v.worst)} <span class="muted">${v.imageCount} img · ${v.nodeCount} hosts</span></div>`).join('')}</div>
+    <div class="muted" style="margin-top:12px">Click a box in the map to see package info, CVEs and the assets that use it.</div>`;
+}
+function renderPanel(n){
+  const p = document.getElementById('mpanel'), i = n.info || {};
+  const open = n.link ? `<a href="${esc(n.link)}"><button class="ghost">Open ${esc(n.type)} page</button></a>` : '';
+  const downstream = [...lineage(n.id)].map(x=>MAP.byId[x]).filter(x=>x.id!==n.id);
+  const cnt = t => downstream.filter(x=>x.type===t).length;
+  const reach = `<div class="muted" style="margin:8px 0">Linked: ${['package','image','host','deployment','namespace','cluster'].filter(t=>cnt(t)).map(t=>cnt(t)+' '+t+(cnt(t)>1?'s':'')).join(' · ')||'nothing'}</div>`;
+  let body = '';
+  if(n.type==='package'){
+    const cves = i.cves||[];
+    body = `<h3>${esc(i.name)} <span class="mono">${esc(i.version)}</span></h3>
+      <div>${i.worst==='None'?'<span class="pill ok">no known CVEs</span>':sev(i.worst)} ${i.fixable?'<span class="pill ok">fix available</span>':''}</div>${reach}
+      <div class="kv">
+        <div>Type</div><div>${esc((i.types||[]).join(', ')||'–')}</div>
+        <div>purl</div><div>${(i.purls||[]).map(x=>`<div class="purl">${esc(x)}</div>`).join('')||'–'}</div>
+        <div>License</div><div>${esc((i.licenses||[]).join(', ')||'–')}</div>
+        <div>Supplier</div><div>${esc((i.suppliers||[]).join(', ')||'–')}</div>
+        ${(i.cpes||[]).length?`<div>CPE</div><div class="purl">${(i.cpes).map(esc).join('<br>')}</div>`:''}
+        <div>Locations</div><div>${(i.locations||[]).map(x=>`<div class="purl">${esc(x)}</div>`).join('')||'<span class="muted">OS package</span>'}</div>
+        <div>Used by</div><div>${i.imageCount} image(s), ${i.nodeCount} host(s)</div>
+      </div>
+      <h2 style="margin-top:14px">CVEs (${cves.length})</h2>
+      ${cves.length? cves.slice(0,40).map(c=>`<div style="margin:3px 0">${sev(c.severity)} ${L.cve(c.cve)} <span class="muted">CVSS ${num(c.cvss)}</span>${c.fixedBy?` → <span class="mono ok">${esc(c.fixedBy)}</span>`:''}</div>`).join('') : '<div class="muted">None known</div>'}
+      <div class="btnrow">${cves.length?`<a href="#/impact?ids=${enc(cves.map(c=>c.cve).join(','))}"><button>Impact of these CVEs</button></a>`:''}
+        <a href="#/package?name=${enc(i.name)}&version=${enc(i.version)}&exact=1"><button class="ghost">Package Hunt table</button></a></div>`;
+  } else if(n.type==='image'){
+    const sb = i.sbom||{};
+    body = `<h3 class="mono">${esc(i.fullName)}</h3><div>${counts(i.sevCounts)}</div>${reach}
+      <div class="kv"><div>Digest</div><div class="purl">${esc(i.id)}</div><div>OS</div><div>${esc(i.os||'–')}</div>
+        <div>Scanned</div><div>${esc(ago(i.scanTime))}</div><div>CVEs</div><div>${i.cveCount} (${i.fixableCount} fixable)</div>
+        <div>Deployments</div><div>${i.deploymentCount}</div>
+        <div>SBOM</div><div>${sb.available?`<span class="pill ok">RHACS ${esc(sb.format||'SPDX')}</span> ${sb.packages||''} pkgs`:'<span class="pill">derived from scan</span>'}</div></div>
+      <div class="btnrow">${open}<a href="/api/sbom/${enc(i.id)}?format=spdx"><button class="ghost">SPDX</button></a>
+        <a href="/api/sbom/${enc(i.id)}?format=cyclonedx"><button class="ghost">CycloneDX</button></a></div>`;
+  } else if(n.type==='deployment'){
+    body = `<h3>${esc(i.name)} ${flags(i)}</h3><div>${counts(i.sevCounts)}</div>${reach}
+      <div class="kv"><div>Cluster</div><div>${L.cl(i.clusterId,i.clusterName)}</div><div>Namespace</div><div>${L.ns(i.namespaceId,i.namespace)}</div>
+      <div>Type</div><div>${esc(i.type)}</div><div>Exposure</div><div>${expo(i.exposure)}</div><div>Risk</div><div>${num(i.riskScore)}</div><div>Pods</div><div>${num(i.podCount)}</div></div>`;
+  } else if(n.type==='host'){
+    body = `<h3>${esc(i.name)}</h3><div>${counts(i.sevCounts)}</div>${reach}
+      <div class="kv"><div>Cluster</div><div>${L.cl(i.clusterId,i.clusterName)}</div><div>IP</div><div class="mono">${esc((i.internalIps||[]).join(', '))}</div>
+      <div>OS</div><div>${esc(i.os)}</div><div>Kernel</div><div class="mono">${esc(i.kernel)}</div><div>Runtime</div><div>${esc(i.runtime)}</div>
+      <div>Workloads</div><div>${i.deploymentCount}</div></div>`;
+  } else if(n.type==='namespace'){
+    body = `<h3>${esc(i.name)}</h3><div class="muted">namespace · ${esc(i.cluster)}</div>${reach}`;
+  } else {
+    body = `<h3>${esc(i.name||n.label)}</h3><div class="muted">${esc(i.type||'cluster')}</div>${reach}
+      <div class="kv"><div>Version</div><div>${esc(i.openshiftVersion?'OCP '+i.openshiftVersion:i.k8sVersion||'–')}</div><div>Health</div><div>${esc(i.health||'–')}</div></div>`;
+  }
+  p.innerHTML = `<div class="muted" style="text-transform:uppercase;font-size:11px;letter-spacing:.6px">${esc(n.type)}</div>${body}
+     ${n.type!=='image'&&open?`<div class="btnrow">${open}</div>`:''}<div class="btnrow"><a onclick="mapReset()">← back to summary</a></div>`;
+}
+window.addEventListener('resize', ()=>{ if(MAP && document.getElementById('mapwrap')){ const sel=MAP.sel; drawMap(MAP.g); if(sel) mapSelect(sel); } });
+
+// ------------------------------------------------------------------ package hunt
+route(/^\/package$/, async (_, q) => {
+  const name = q.get('name')||'', ver = q.get('version')||'', exact = q.get('exact')==='1';
+  $app.innerHTML = `<h1>Package Hunt</h1>
+   <div class="sub">Find every image and node carrying a package — useful for zero-days before a CVE ID or scanner signature exists (e.g. <i>xz</i> 5.6, <i>log4j-core</i> 2.14).</div>
+   <div class="card row"><input type="text" id="pn" placeholder="package name (e.g. openssl)" value="${esc(name)}" style="flex:2">
+     <input type="text" id="pv" placeholder="version prefix (optional)" value="${esc(ver)}" style="flex:1">
+     <label class="muted"><input type="checkbox" id="px" ${exact?'checked':''}> exact name</label>
+     <button id="pgo">Hunt</button></div><div id="pres"></div>`;
+  const go = () => location.hash = `#/package?name=${enc(document.getElementById('pn').value.trim())}&version=${enc(document.getElementById('pv').value.trim())}&exact=${document.getElementById('px').checked?1:0}`;
+  document.getElementById('pgo').onclick = go;
+  document.getElementById('pn').onkeydown = e => e.key==='Enter' && go();
+  if(name.length<2) return;
+  const r = await api(`/api/component?name=${enc(name)}&version=${enc(ver)}&exact=${exact?1:0}`);
+  document.getElementById('pres').innerHTML = `
+   <div class="blast"><div class="card"><div class="n">${r.images.length}</div><div class="muted">Image matches</div></div>
+     <div class="card"><div class="n">${r.deploymentCount}</div><div class="muted">Deployments</div></div>
+     <div class="card"><div class="n">${r.nodes.length}</div><div class="muted">Node matches</div></div></div>
+   <div class="btnrow"><a href="#/sbom?name=${enc(name)}&version=${enc(ver)}&exact=${exact?1:''}"><button>View on SBOM Map</button></a></div>
+   <h2>Versions found</h2><div class="card">${r.versions.map(([v,n])=>`<span class="pill">${esc(v)} × ${n}</span>`).join(' ')||'<span class="muted">none</span>'}</div>
+   <h2>Images</h2>${table(r.images,[
+     {h:'Image',f:x=>L.img(x.imageId,x.image),s:x=>x.image},{h:'Package',f:x=>esc(x.component),s:x=>x.component},
+     {h:'Version',f:x=>`<span class="mono">${esc(x.version)}</span>`,s:x=>x.version},{h:'Type',f:x=>esc(x.source||'')},
+     {h:'purl',f:x=>`<span class="purl">${esc(x.purl||'')}</span>`},{h:'License',f:x=>esc(x.license||'–')},
+     {h:'Location',f:x=>`<span class="mono muted">${esc(x.location||'')}</span>`},
+     {h:'Known CVEs',f:x=>x.cves.slice(0,6).map(L.cve).join(' ')+(x.cves.length>6?` <span class="muted">+${x.cves.length-6}</span>`:''),s:x=>x.cves.length},
+     {h:'Running in',f:x=>x.deployments.map(d=>L.dep(d.id,d.clusterName+'/'+d.namespace+'/'+d.name)).join('<br>')||'<span class="muted">not deployed</span>',s:x=>x.deployments.length}])}
+   <h2>Nodes</h2>${table(r.nodes,[
+     {h:'Cluster',f:x=>L.cl(x.clusterId,x.clusterName)},{h:'Node',f:x=>L.node(x.id,x.name),s:x=>x.name},
+     {h:'Package',f:x=>esc(x.component)},{h:'Version',f:x=>`<span class="mono">${esc(x.version)}</span>`,s:x=>x.version},
+     {h:'Known CVEs',f:x=>x.cves.slice(0,6).map(L.cve).join(' '),s:x=>x.cves.length}],{empty:'No node matches'})}`;
+});
+
+// ------------------------------------------------------------------ CVE catalog
+route(/^\/cves$/, async (_, q) => {
+  const p = new URLSearchParams({severity:q.get('severity')||'',fixable:q.get('fixable')||'',q:q.get('q')||'',all:q.get('all')||''});
+  const rows = await api('/api/cves?'+p);
+  const sel = (id,opts,v) => `<select id="${id}">${opts.map(([k,l])=>`<option value="${k}" ${k===v?'selected':''}>${l}</option>`).join('')}</select>`;
+  $app.innerHTML = `<h1>CVE Catalog</h1><div class="sub">Ranked by severity, then blast radius.</div>
+   <div class="card row">${sel('fs',[['','All severities'],['Critical','Critical'],['Important','Important'],['Moderate','Moderate'],['Low','Low']],p.get('severity'))}
+    ${sel('ff',[['','Fix: any'],['yes','Fix available'],['no','No fix']],p.get('fixable'))}
+    <input type="text" id="fq" placeholder="filter id / summary" value="${esc(p.get('q'))}">
+    <label class="muted"><input type="checkbox" id="fa" ${p.get('all')==='1'?'checked':''}> include images not deployed</label>
+    <button id="fgo">Apply</button><span class="muted">${rows.length} CVEs</span></div>
+   <div style="margin-top:12px">${table(rows,[
+    {h:'CVE',f:r=>L.cve(r.id),s:r=>r.id},{h:'Severity',f:r=>sev(r.severity),s:r=>SR[r.severity]},
+    {h:'CVSS',f:r=>num(r.cvss),s:r=>r.cvss||0},{h:'EPSS',f:r=>pct(r.epssProbability),s:r=>r.epssProbability||0},
+    {h:'Clusters',f:r=>r.clusterCount,s:r=>r.clusterCount},{h:'Deployments',f:r=>r.deploymentCount,s:r=>r.deploymentCount},
+    {h:'Images',f:r=>r.imageCount,s:r=>r.imageCount},{h:'Nodes',f:r=>r.nodeCount,s:r=>r.nodeCount},
+    {h:'Fix',f:r=>r.fixable?'<span class="ok">yes</span>':'<span class="muted">no</span>',s:r=>+r.fixable},
+    {h:'Published',f:r=>esc((r.publishedOn||'').slice(0,10)),s:r=>r.publishedOn||''},
+    {h:'Summary',f:r=>`<span class="muted">${esc((r.summary||'').slice(0,100))}</span>`}])}</div>`;
+  document.getElementById('fgo').onclick = () => location.hash = '#/cves?'+new URLSearchParams({
+    severity:document.getElementById('fs').value,fixable:document.getElementById('ff').value,
+    q:document.getElementById('fq').value,all:document.getElementById('fa').checked?'1':''});
+});
+
+// ------------------------------------------------------------------ lists
+route(/^\/clusters$/, async () => { $app.innerHTML = '<h1>Clusters</h1>'+clusterTable(await api('/api/clusters')); });
+route(/^\/images$/, async () => {
+  const rows = await api('/api/images');
+  $app.innerHTML = '<h1>Images</h1><div class="sub">Sorted by Critical CVE count (top 1000).</div>'+imgTable(rows);
+});
+function imgTable(rows){ return table(rows,[
+  {h:'Image',f:r=>L.img(r.id,r.fullName),s:r=>r.fullName},{h:'OS',f:r=>esc(r.os)},
+  {h:'C / I / M / L',f:r=>counts(r.sevCounts),s:r=>r.sevCounts.Critical*1e4+r.sevCounts.Important*100+r.sevCounts.Moderate},
+  {h:'CVEs',f:r=>r.cveCount,s:r=>r.cveCount},{h:'Fixable',f:r=>r.fixableCount,s:r=>r.fixableCount},
+  {h:'Deployments',f:r=>r.deploymentCount,s:r=>r.deploymentCount},
+  {h:'Scanned',f:r=>esc(ago(r.scanTime))+((r.notes||[]).length?' <span class="pill warn">'+esc(r.notes.join(', '))+'</span>':''),s:r=>r.scanTime||''}]); }
+route(/^\/nodes$/, async () => { $app.innerHTML = '<h1>Nodes</h1>'+nodeTable(await api('/api/nodes')); });
+function nodeTable(rows){ return table(rows,[
+  {h:'Cluster',f:r=>L.cl(r.clusterId,r.clusterName),s:r=>r.clusterName},{h:'Node',f:r=>L.node(r.id,r.name),s:r=>r.name},
+  {h:'IP',f:r=>`<span class="mono">${esc((r.internalIps||[]).join(', '))}</span>`},{h:'OS',f:r=>esc(r.os),s:r=>r.os},
+  {h:'Kernel',f:r=>`<span class="mono">${esc(r.kernel)}</span>`},{h:'Runtime',f:r=>esc(r.runtime)},
+  {h:'C / I / M / L',f:r=>counts(r.sevCounts),s:r=>r.sevCounts.Critical*1e4+r.sevCounts.Important*100},
+  {h:'Workloads',f:r=>r.deploymentCount,s:r=>r.deploymentCount}]); }
+
+function cveTable(rows, withImage){ return table(rows,[
+  {h:'CVE',f:r=>L.cve(r.cve),s:r=>r.cve},{h:'Severity',f:r=>sev(r.severity),s:r=>SR[r.severity]},
+  {h:'CVSS',f:r=>num(r.cvss),s:r=>r.cvss||0},
+  ...(withImage?[{h:'Image',f:r=>L.img(r.imageId,r.image),s:r=>r.image}]:[]),
+  {h:'Package',f:r=>L.pkg(r.component)+' <span class="mono muted">'+esc(r.version)+'</span>',s:r=>r.component},
+  {h:'Fixed in',f:r=>r.fixedBy?`<span class="mono ok">${esc(r.fixedBy)}</span>`:'<span class="muted">–</span>',s:r=>r.fixedBy||''}],{empty:'No CVEs'}); }
+const kv = o => '<div class="card kv">'+Object.entries(o).map(([k,v])=>`<div>${esc(k)}</div><div>${v}</div>`).join('')+'</div>';
+const labels = o => Object.entries(o||{}).slice(0,30).map(([k,v])=>`<span class="pill mono">${esc(k)}=${esc(v)}</span>`).join(' ')||'<span class="muted">–</span>';
+
+// ------------------------------------------------------------------ details
+route(/^\/cluster\/(.+)$/, async ([id]) => {
+  const r = await api('/api/cluster/'+enc(id)), c = r.cluster;
+  $app.innerHTML = `<div class="chain muted">Cluster</div><h1>${esc(c.name)}</h1>
+   ${kv({Type:esc(c.type),Version:esc(c.openshiftVersion?'OpenShift '+c.openshiftVersion+' / k8s '+c.k8sVersion:c.k8sVersion),Sensor:esc(c.sensorVersion),Health:esc(c.health),Provider:esc([c.provider,c.region].filter(Boolean).join(' / ')||'–')})}
+   <h2>Namespaces (${r.namespaces.length})</h2>${table(r.namespaces,[
+     {h:'Namespace',f:n=>L.ns(n.id,n.name),s:n=>n.name},{h:'Deployments',f:n=>n.deploymentCount,s:n=>n.deploymentCount},
+     {h:'Critical CVE hits',f:n=>n.cveCritical?`<b class="bad">${n.cveCritical}</b>`:'0',s:n=>n.cveCritical},
+     {h:'Network policies',f:n=>num(n.networkPolicyCount),s:n=>n.networkPolicyCount||0}])}
+   <h2>Nodes (${r.nodes.length})</h2>${nodeTable(r.nodes)}`;
+});
+route(/^\/namespace\/(.+)$/, async ([id]) => {
+  const r = await api('/api/namespace/'+enc(id)), n = r.namespace;
+  $app.innerHTML = `<div class="chain">${L.cl(n.clusterId,n.clusterName)}<span class="sep">›</span><span class="muted">Namespace</span></div><h1>${esc(n.name)}</h1>
+   ${kv({Labels:labels(n.labels),Created:esc(n.created||'–'),'Network policies':num(n.networkPolicyCount)})}
+   <h2>Deployments (${r.deployments.length})</h2>${depTable(r.deployments)}`;
+});
+route(/^\/deployment\/(.+)$/, async ([id]) => {
+  const r = await api('/api/deployment/'+enc(id)), d = r.deployment;
+  $app.innerHTML = `<div class="chain">${L.cl(d.clusterId,d.clusterName)}<span class="sep">›</span>${L.ns(d.namespaceId,d.namespace)}<span class="sep">›</span><span class="muted">${esc(d.type)}</span></div>
+   <h1>${esc(d.name)} ${flags(d)}</h1>
+   ${kv({'Risk score':num(d.riskScore),Exposure:expo(d.exposure),Ports:d.ports.map(p=>`<span class="pill mono">${esc(p.port)}/${esc(p.protocol)} ${esc(p.exposure)}</span>`).join(' ')||'–',
+        'Service account':esc(d.serviceAccount||'–'),Pods:num(d.podCount),'CVEs (C/I/M/L)':counts(d.sevCounts),Labels:labels(d.labels),Created:esc(d.created||'–')})}
+   <h2>Containers → Images</h2>${table(r.containers,[
+     {h:'Container',f:c=>esc(c.name)+(c.privileged?' <span class="pill bad">privileged</span>':'')},
+     {h:'Image',f:c=>L.img(c.imageId,c.image)},
+     {h:'C / I / M / L',f:c=>c.imageInfo?counts(c.imageInfo.sevCounts):'<span class="muted">not scanned</span>'},
+     {h:'Scanned',f:c=>c.imageInfo?esc(ago(c.imageInfo.scanTime)):'–'}])}
+   <h2>Running on nodes</h2>${nodeTable(r.nodes)}
+   <h2>Vulnerabilities (${r.cves.length})</h2>${cveTable(r.cves, true)}`;
+});
+route(/^\/image\/(.+)$/, async ([id]) => {
+  const r = await api('/api/image/'+enc(id)), i = r.image;
+  $app.innerHTML = `<div class="chain muted">Image</div><h1 class="mono" style="word-break:break-all">${esc(i.fullName)}</h1>
+   ${kv({Digest:`<span class="mono">${esc(i.id)}</span>`,'Other names':(i.names||[]).filter(n=>n!==i.fullName).map(n=>`<span class="pill mono">${esc(n)}</span>`).join(' ')||'–',
+        OS:esc(i.os),Built:esc(i.created||'–'),Scanned:esc(i.scanTime||'–')+' ('+esc(ago(i.scanTime))+')',
+        'CVEs (C/I/M/L)':counts(i.sevCounts),Fixable:num(i.fixableCount),Notes:(i.notes||[]).map(esc).join(', ')||'–'})}
+   <h2>Used by deployments (${r.deployments.length})</h2>${depTable(r.deployments,'Not used by any running deployment')}
+   <h2>Vulnerabilities (${r.cves.length})</h2>${cveTable(r.cves,false)}
+   <h2>SBOM — ${r.components.length} packages</h2>
+   <div class="card row" style="margin-bottom:10px">
+     ${(i.sbom||{}).available?`<span class="pill ok">Official RHACS ${esc(i.sbom.format||'SPDX')} SBOM</span><span class="muted">generated ${esc((i.sbom.created||'').slice(0,16))}</span>`
+       :'<span class="pill">SBOM derived from RHACS scan data</span><span class="muted">run the collector with --sbom to pull the official SPDX document</span>'}
+     <span style="flex:1"></span>
+     <a href="/api/sbom/${enc(i.id)}?format=spdx"><button class="ghost">Download SPDX 2.3</button></a>
+     <a href="/api/sbom/${enc(i.id)}?format=cyclonedx"><button class="ghost">Download CycloneDX 1.5</button></a></div>
+   ${table(r.components,[
+     {h:'Package',f:c=>L.pkg(c.name,c.version),s:c=>c.name},{h:'Version',f:c=>`<span class="mono">${esc(c.version)}</span>`,s:c=>c.version},
+     {h:'Type',f:c=>esc(c.source||''),s:c=>c.source||''},
+     {h:'purl',f:c=>`<span class="purl">${esc(c.purl||'')}</span>${c.purlSource==='derived'?' <span class="muted" title="derived from scan data">*</span>':''}`,s:c=>c.purl||''},
+     {h:'License',f:c=>esc(c.license||'–'),s:c=>c.license||''},{h:'Supplier',f:c=>esc(c.supplier||'–'),s:c=>c.supplier||''},
+     {h:'Location',f:c=>`<span class="mono muted">${esc(c.location||'')}</span>`},
+     {h:'CVEs',f:c=>c.cveCount?`${sev(c.worst)} ${c.cveCount}`:'<span class="muted">0</span>',s:c=>(SR[c.worst]||0)*1000+c.cveCount}],{max:2000})}`;
+});
+route(/^\/node\/(.+)$/, async ([id]) => {
+  const r = await api('/api/node/'+enc(id)), n = r.node;
+  $app.innerHTML = `<div class="chain">${L.cl(n.clusterId,n.clusterName)}<span class="sep">›</span><span class="muted">Node</span></div><h1>${esc(n.name)}</h1>
+   ${kv({'Internal IPs':`<span class="mono">${esc((n.internalIps||[]).join(', ')||'–')}</span>`,'External IPs':`<span class="mono">${esc((n.externalIps||[]).join(', ')||'–')}</span>`,
+        OS:esc(n.os),Kernel:`<span class="mono">${esc(n.kernel)}</span>`,Runtime:esc(n.runtime),Kubelet:esc(n.kubelet),
+        Joined:esc(n.joinedAt||'–'),Scanned:esc(n.scanTime||'–'),'CVEs (C/I/M/L)':counts(n.sevCounts),Labels:labels(n.labels)})}
+   <h2>Workloads scheduled here (${r.deployments.length})</h2>${depTable(r.deployments,'No pod placement data')}
+   <h2>Node OS vulnerabilities (${r.cves.length})</h2>${cveTable(r.cves,false)}`;
+});
+
+// ------------------------------------------------------------------ global search
+route(/^\/search$/, async (_, q) => {
+  const term = q.get('q')||''; const r = await api('/api/search?q='+enc(term));
+  const sec = (t, html, n) => n ? `<h2>${t} (${n})</h2>${html}` : '';
+  const out = [
+    sec('CVEs', table(r.cves,[{h:'CVE',f:x=>L.cve(x.id)},{h:'Severity',f:x=>sev(x.severity)},{h:'CVSS',f:x=>num(x.cvss)},{h:'Deployments',f:x=>x.deploymentCount},{h:'Nodes',f:x=>x.nodeCount}]), r.cves.length),
+    sec('Deployments', depTable(r.deployments), r.deployments.length),
+    sec('Images', imgTable(r.images), r.images.length),
+    sec('Packages', table(r.components,[{h:'Package',f:x=>L.pkg(x.name)},{h:'Images containing it',f:x=>x.imageCount}]), r.components.length),
+    sec('Namespaces', table(r.namespaces,[{h:'Namespace',f:x=>L.ns(x.id,x.name)},{h:'Cluster',f:x=>L.cl(x.clusterId,x.clusterName)}]), r.namespaces.length),
+    sec('Nodes', nodeTable(r.nodes), r.nodes.length),
+    sec('Clusters', clusterTable(r.clusters), r.clusters.length),
+  ].join('');
+  $app.innerHTML = `<h1>Search: <span class="mono">${esc(term)}</span></h1>`+(out||'<div class="card empty">No matches</div>');
+});
+document.getElementById('gsearch').addEventListener('keydown', e => {
+  if(e.key!=='Enter') return; const v = e.target.value.trim(); if(!v) return;
+  const ids = v.match(/\b(CVE-\d{4}-\d{4,}|GHSA-[\w-]+|RHSA-\d{4}:\d+)\b/gi);
+  location.hash = ids ? '#/impact?ids='+enc(ids.join(',')) : '#/search?q='+enc(v);
+});
+
+// freshness banner on every page
+api('/api/summary').then(s => document.getElementById('fresh').textContent =
+  `Data: ${ago(s.meta.collectedAt)} · ${s.counts.deployments} deployments · ${s.counts.images} images`).catch(()=>{});
+router();
+</script>
+</body>
+</html>
